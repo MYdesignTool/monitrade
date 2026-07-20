@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>妙想模拟交易自动化 · 项目进度</title>
+<style>
+  /* ============ 主题（浅色） ============ */
+  :root{
+    --bg:#f5f7fa; --panel:#ffffff; --ink:#1f2933; --sub:#647084;
+    --line:#e3e8ef; --accent:#2563eb; --green:#16a34a; --green-bg:#e7f6ec;
+    --yellow:#d97706; --yellow-bg:#fdf2e3; --gray:#94a3b8; --gray-bg:#f1f3f7;
+    --red:#dc2626; --red-bg:#fdeaea; --blue-bg:#e8f0fe;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.55;padding:28px 20px 60px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;justify-content:space-between;margin-bottom:8px}
+  h1{font-size:24px;font-weight:700}
+  .sub{color:var(--sub);font-size:13px;margin-top:4px}
+  .updated{font-size:12px;color:var(--sub);text-align:right;white-space:nowrap}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.green{background:var(--green-bg);color:var(--green)}
+  .pill.yellow{background:var(--yellow-bg);color:var(--yellow)}
+  .pill.gray{background:var(--gray-bg);color:var(--gray)}
+  .pill.blue{background:var(--blue-bg);color:var(--accent)}
+  .pill.red{background:var(--red-bg);color:var(--red)}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-top:18px}
+  h2{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  h2 .tag{font-size:11px;font-weight:500;color:var(--sub)}
+  /* KPI */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .kpi{background:var(--blue-bg);border-radius:12px;padding:14px 16px}
+  .kpi .v{font-size:26px;font-weight:700;color:var(--accent);line-height:1.1}
+  .kpi .k{font-size:12px;color:var(--sub);margin-top:4px}
+  /* 进度条 */
+  .bar{height:9px;background:var(--gray-bg);border-radius:6px;overflow:hidden;margin-top:6px}
+  .bar > i{display:block;height:100%;background:var(--accent);border-radius:6px}
+  .gate{margin:10px 0;display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;font-size:13px}
+  .gate .lab{grid-column:1}
+  .gate .num{grid-column:2;font-weight:600;color:var(--ink)}
+  .gate .bar{grid-column:1 / -1}
+  /* 组件卡片 */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:14px 15px;position:relative}
+  .card .name{font-weight:600;font-size:14px;margin-bottom:6px;padding-right:64px}
+  .card .desc{font-size:12px;color:var(--sub);min-height:34px}
+  .card .meta{font-size:11px;color:var(--sub);margin-top:8px;font-family:ui-monospace,Consolas,monospace}
+  .card .badge{position:absolute;top:13px;right:13px}
+  /* 阶段 */
+  .phases{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .phase{padding:16px 18px;border-right:1px solid var(--line);position:relative}
+  .phase:last-child{border-right:none}
+  .phase .ph{font-size:12px;color:var(--sub);font-weight:600;letter-spacing:.5px}
+  .phase .tt{font-size:15px;font-weight:700;margin:6px 0 8px}
+  .phase .st{font-size:12px;margin-top:8px}
+  .phase.done{background:var(--green-bg)}
+  .phase.active{background:var(--blue-bg)}
+  .phase.pending{background:var(--gray-bg)}
+  /* 时间线 */
+  .tl{position:relative;padding-left:22px}
+  .tl::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .tl .ev{position:relative;margin-bottom:16px}
+  .tl .ev::before{content:"";position:absolute;left:-19px;top:4px;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .tl .ev.future::before{background:var(--gray)}
+  .tl .date{font-size:12px;color:var(--sub);font-weight:600}
+  .tl .body{font-size:13px;margin-top:2px}
+  /* 技术债 / 列表 */
+  ul.todo{list-style:none}
+  ul.todo li{font-size:13px;padding:7px 0;border-bottom:1px dashed var(--line);display:flex;gap:8px}
+  ul.todo li:last-child{border-bottom:none}
+  ul.todo li .box{color:var(--gray);font-weight:700}
+  .arch{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .arch .box2{border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .arch .box2 h3{font-size:13px;margin-bottom:6px}
+  .arch .box2 p{font-size:12px;color:var(--sub)}
+  .note{font-size:11px;color:var(--gray);margin-top:10px}
+  footer{text-align:center;color:var(--gray);font-size:11px;margin-top:26px}
+  /* 最新复盘 */
+  .latest{background:linear-gradient(135deg,#eef4ff,#f7faff);border:1px solid #d4e2ff}
+  .latest-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:4px}
+  .lg{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .lg .lg-k{font-size:11px;color:var(--sub)}
+  .lg .lg-v{font-size:14px;font-weight:600;margin-top:3px;line-height:1.4}
+  .advice{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .advice h3{font-size:13px;margin-bottom:8px;color:var(--accent)}
+  .advice ul{list-style:none}
+  .advice li{font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line);display:flex;gap:8px}
+  .advice li:last-child{border-bottom:none}
+  .advice li .dot{color:var(--accent);font-weight:700}
+  .loading{padding:40px;text-align:center;color:var(--sub)}
+  @media(max-width:680px){.phases{grid-template-columns:1fr}.arch{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="h-title">妙想模拟交易自动化</h1>
+      <div class="sub" id="h-sub"></div>
+      <div style="margin-top:8px"><span class="pill" id="h-overall"></span></div>
+    </div>
+    <div class="updated">
+      更新于：<b id="h-updated">加载中…</b><br>
+      仓库：<span id="h-repo"></span>
+    </div>
+  </header>
+
+  <!-- ===================== 最新交易日复盘（每日自动更新） ===================== -->
+  <section class="latest">
+    <h2>最新交易日复盘 <span class="tag" id="latest-date"></span></h2>
+    <div class="latest-grid">
+      <div class="lg"><div class="lg-k">周确认态</div><div class="lg-v" id="lg-confirmed">—</div></div>
+      <div class="lg"><div class="lg-k">日度综合</div><div class="lg-v" id="lg-daily">—</div></div>
+      <div class="lg"><div class="lg-k">目标仓位中枢</div><div class="lg-v" id="lg-position">—</div></div>
+      <div class="lg"><div class="lg-k">激活策略</div><div class="lg-v" id="lg-activated">—</div></div>
+      <div class="lg"><div class="lg-k">组合选股</div><div class="lg-v" id="lg-selection">—</div></div>
+      <div class="lg"><div class="lg-k">当日盈亏</div><div class="lg-v" id="lg-pnl">—</div></div>
+    </div>
+    <div class="advice" id="lg-advice-wrap">
+      <h3>AI 优化建议摘要</h3>
+      <ul id="lg-advice"></ul>
+    </div>
+  </section>
+
+  <!-- ===================== 核心指标 ===================== -->
+  <section>
+    <h2>核心指标 <span class="tag">KPI</span></h2>
+    <div class="kpis" id="kpis"></div>
+    <h2 style="margin-top:18px">阶段三数据门槛进度 <span class="tag">达标才进入自动改库</span></h2>
+    <div id="gates"></div>
+  </section>
+
+  <section>
+    <h2>组件状态 <span class="tag">6 个组件</span></h2>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section>
+    <h2>阶段路线图 <span class="tag">3 阶段</span></h2>
+    <div class="phases" id="phases"></div>
+  </section>
+
+  <section>
+    <h2>里程碑时间线</h2>
+    <div class="tl" id="timeline"></div>
+  </section>
+
+  <section>
+    <h2>待办 / 技术债</h2>
+    <ul class="todo" id="todo"></ul>
+  </section>
+
+  <section>
+    <h2>部署架构</h2>
+    <div class="arch">
+      <div class="box2"><h3 id="arch-c-h"></h3><p id="arch-c-p"></p></div>
+      <div class="box2"><h3 id="arch-b-h"></h3><p id="arch-b-p"></p></div>
+    </div>
+    <div class="note">本看板由自动化任务每日（北京时间 21:00 后）根据最新交易日报告重新生成 data.json 并发布，链接不变。「最新交易日复盘」区块每日随真实交易数据更新。维护提示：模板在 moni_github_repo/cloud-deploy/dashboard/index.html，生成逻辑在 gen_dashboard.py。</div>
+  </section>
+
+  <footer>妙想模拟交易自动化 · 项目进度看板 · 数据每日自动更新</footer>
+</div>
+
+<script>
+  function esc(s){
+    return String(s==null?'':s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function render(D){
+    const $ = id => document.getElementById(id);
+    $('h-title').textContent = D.project || '妙想模拟交易自动化';
+    $('h-sub').textContent = D.subtitle || '';
+    $('h-overall').textContent = D.overall || '';
+    $('h-overall').className = 'pill ' + (D.overallClass || 'yellow');
+    $('h-updated').textContent = D.updated || '—';
+    $('h-repo').textContent = D.repo || '';
+
+    // 最新复盘
+    const L = D.latest || {};
+    $('latest-date').textContent = L.date ? ('数据日 ' + L.date) : '';
+    $('lg-confirmed').textContent = L.confirmed || '—';
+    $('lg-daily').textContent = L.daily || '—';
+    $('lg-position').textContent = L.position || '—';
+    $('lg-activated').textContent = L.activated || '—';
+    $('lg-selection').textContent = L.selection || '—';
+    $('lg-pnl').textContent = L.pnl || '—';
+    const adv = Array.isArray(L.advice) ? L.advice : [];
+    if (adv.length){
+      $('lg-advice').innerHTML = adv.map(a =>
+        `<li><span class="dot">•</span><span>${esc(a)}</span></li>`).join('');
+    } else {
+      $('lg-advice').innerHTML = `<li><span class="dot">•</span><span>暂无复盘建议（建议模式 / 无新报告）</span></li>`;
+    }
+
+    // KPI / 门槛 / 组件 / 阶段 / 时间线 / 技术债 / 架构
+    $('kpis').innerHTML = (D.kpis||[]).map(k =>
+      `<div class="kpi"><div class="v">${esc(k.v)}</div><div class="k">${esc(k.k)}</div></div>`).join('');
+
+    $('gates').innerHTML = (D.gates||[]).map(g =>
+      `<div class="gate"><div class="lab">${esc(g.lab)}</div><div class="num">${esc(g.num)}</div>
+       <div class="bar"><i style="width:${g.pct||0}%"></i></div></div>`).join('');
+
+    $('cards').innerHTML = (D.components||[]).map(c =>
+      `<div class="card"><div class="name">${esc(c.name)}</div>
+       <span class="badge pill ${c.cls}">${esc(c.status)}</span>
+       <div class="desc">${esc(c.desc)}</div>
+       <div class="meta">${esc(c.meta)}</div></div>`).join('');
+
+    $('phases').innerHTML = (D.phases||[]).map(p =>
+      `<div class="phase ${p.cls}"><div class="ph">${esc(p.ph)}</div>
+       <div class="tt">${esc(p.tt)}</div><div class="st">${esc(p.st)}</div></div>`).join('');
+
+    $('timeline').innerHTML = (D.milestones||[]).map(m =>
+      `<div class="ev ${m.future?'future':''}"><div class="date">${esc(m.date)}</div>
+       <div class="body">${esc(m.body)}</div></div>`).join('');
+
+    $('todo').innerHTML = (D.techdebt||[]).map(t =>
+      `<li><span class="box">[ ]</span><span>${esc(t)}</span></li>`).join('');
+
+    $('arch-c-h').textContent = (D.archCurrent||{}).h || '';
+    $('arch-c-p').textContent = (D.archCurrent||{}).p || '';
+    $('arch-b-h').textContent = (D.archBackup||{}).h || '';
+    $('arch-b-p').textContent = (D.archBackup||{}).p || '';
+  }
+
+  fetch('./data.json', {cache:'no-store'})
+    .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(render)
+    .catch(err => {
+      document.getElementById('h-updated').textContent = '加载失败';
+      document.getElementById('lg-daily').textContent = '数据加载失败：' + err.message;
+    });
+</script>
+</body>
+</html>

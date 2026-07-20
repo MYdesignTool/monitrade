@@ -1,0 +1,160 @@
+{
+  "project": "妙想模拟交易自动化（moni-trade）",
+  "subtitle": "GitHub Actions 云端模拟盘自动交易 + 资讯推送 + 策略自优化",
+  "updated": "2026-07-20",
+  "overall": "阶段二 · 人工审阅进行中",
+  "overallClass": "yellow",
+  "repo": "github.com/MYdesignTool/moni-trade（私有）",
+  "kpis": [
+    {
+      "v": "1",
+      "k": "累计交易日"
+    },
+    {
+      "v": "0/4",
+      "k": "阶段三门槛条件满足"
+    },
+    {
+      "v": "6",
+      "k": "线上工作流（5 交易 + 1 资讯）"
+    },
+    {
+      "v": "6",
+      "k": "本地自动化（5 暂停 + 1 活跃）"
+    }
+  ],
+  "gates": [
+    {
+      "lab": "累计交易日 ≥ 20",
+      "num": "1 / 20",
+      "pct": 5
+    },
+    {
+      "lab": "覆盖确认态 ≥ 2 种",
+      "num": "1 / 2",
+      "pct": 50
+    },
+    {
+      "lab": "单状态样本 ≥ 5 天",
+      "num": "1 / 5",
+      "pct": 20
+    },
+    {
+      "lab": "状态切换 ≥ 1 次",
+      "num": "0 / 1",
+      "pct": 0
+    }
+  ],
+  "components": [
+    {
+      "name": "云端交易执行",
+      "desc": "GitHub Actions 5 个工作流每日运行（09:35~15:10）",
+      "meta": "moni-morning_open / morning_add / afternoon_rebalance / afternoon_close / review",
+      "status": "运行中",
+      "cls": "green"
+    },
+    {
+      "name": "资讯要闻推送",
+      "desc": "每日 09:05 抓取今日要闻，DeepSeek flash 精炼+合并，飞书卡片",
+      "meta": "moni-news.yml · news.py · DEEPSEEK_APIKEY",
+      "status": "运行中",
+      "cls": "green"
+    },
+    {
+      "name": "飞书群集成",
+      "desc": "连接器机器人(bot)读/撤回/发消息，已清理测试数据",
+      "meta": "chat: AI交易测试 · appId cli_aad66ed0c278dbe2",
+      "status": "已接入",
+      "cls": "green"
+    },
+    {
+      "name": "策略自优化定时任务",
+      "desc": "每日 21:00 复盘+建议，达门槛后自动改库",
+      "meta": "automation-1784469597971 · 建议模式",
+      "status": "ACTIVE",
+      "cls": "green"
+    },
+    {
+      "name": "策略库（元策略）",
+      "desc": "market_state_scheduling 三轴状态→策略组→仓位→风控",
+      "meta": "cloud-deploy/策略库.json",
+      "status": "在线·人工改库",
+      "cls": "blue"
+    },
+    {
+      "name": "本地交易自动化(5)",
+      "desc": "云端上线后为防重复下单已 PAUSED，仅本机可执行",
+      "meta": "automation-1784442993501 等 5 个",
+      "status": "PAUSED",
+      "cls": "gray"
+    }
+  ],
+  "phases": [
+    {
+      "ph": "PHASE 1",
+      "tt": "云端自动执行",
+      "st": "✅ 已完成 · 2026-07-19 上线",
+      "cls": "done"
+    },
+    {
+      "ph": "PHASE 2",
+      "tt": "人工审阅 + 优化闭环",
+      "st": "🟢 进行中 · 当前阶段",
+      "cls": "active"
+    },
+    {
+      "ph": "PHASE 3",
+      "tt": "自优化 / 绩效归因",
+      "st": "⚪ 待数据 · ≥20 交易日",
+      "cls": "pending"
+    }
+  ],
+  "milestones": [
+    {
+      "date": "2026-07-19",
+      "body": "云端上线（GitHub Actions）；资讯推送接入；飞书连接器接入并清理测试消息；策略自优化定时任务创建",
+      "future": false
+    },
+    {
+      "date": "2026-07-20",
+      "body": "首个交易日：15:10 收盘后生成首份复盘报告 → 21:00 自优化任务产出首份建议并发群（看板同步更新）",
+      "future": false
+    },
+    {
+      "date": "待定（≥20 交易日）",
+      "body": "评估进入阶段三：先做离线绩效归因，确认信号稳定后灰度半自动改库",
+      "future": true
+    }
+  ],
+  "techdebt": [
+    "统一 策略库.json 的 daily_workflow.reports_dir 本地 Windows 路径残留（云端已用 REPORTS_DIR 覆盖）",
+    "review_report.py 增加「跨日对比」：读历史 market_state.json 提交记录，绘制确认态演化",
+    "阶段三触发后新建 attribution.py（绩效归因）与 rebalance.py（权重再平衡），默认 DRY_RUN=true",
+    "考虑为审阅产出建立 reviews/{日期}.md 归档，形成可检索的优化决策日志"
+  ],
+  "archCurrent": {
+    "h": "当前部署：GitHub Actions（¥0）",
+    "p": "6 个工作流每日运行；状态文件 market_state.json 由工作流末尾 git commit 回仓库持久化；Secrets：MX_APIKEY / MX_SEARCH_APIKEY / DEEPSEEK_APIKEY / NOTIFY_WEBHOOK"
+  },
+  "archBackup": {
+    "h": "备选备忘：腾讯云函数 SCF（免费档）",
+    "p": "配置保留在 serverless.yml + scf_handler.py（README 含完整步骤）。仅当 GitHub Actions 因网络管制执行不稳时切换；线上稳定后再清理"
+  },
+  "latest": {
+    "date": "2026-07-20",
+    "confirmed": "震荡市+充裕+冰点",
+    "daily": "震荡市+充裕+冰点",
+    "position": "50%",
+    "activated": "价值成长、稳健估值、筹码集中、机构买入",
+    "selection": "组合共振(≥2票) → 12 只达标，取前 5",
+    "pnl": "—",
+    "advice": [
+      "> 模式：**建议模式**（阶段三数据门槛未达，本文件不改库、不 push；仅供用户确认后再执行）",
+      "> 生成时间：2026-07-20 21:00（每日定时复盘）",
+      "| 门槛项 | 要求 | 当前 | 是否满足 |",
+      "|---|---|---|---|",
+      "| 交易日报告文件夹数 | ≥ 20 | 1 | ❌ |",
+      "| distinct confirmed_key | ≥ 2 | 1 | ❌ |"
+    ]
+  }
+}
