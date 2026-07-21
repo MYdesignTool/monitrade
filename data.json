@@ -1,13 +1,13 @@
 {
   "project": "妙想模拟交易自动化（moni-trade）",
-  "subtitle": "GitHub Actions 云端模拟盘自动交易 + 资讯推送 + 策略自优化",
-  "updated": "2026-07-20",
+  "subtitle": "腾讯云 SCF 云端模拟盘自动交易 + 资讯推送 + 策略自优化",
+  "updated": "2026-07-21",
   "overall": "阶段二 · 人工审阅进行中",
   "overallClass": "yellow",
   "repo": "github.com/MYdesignTool/moni-trade（私有）",
   "kpis": [
     {
-      "v": "1",
+      "v": "2",
       "k": "累计交易日"
     },
     {
@@ -16,7 +16,7 @@
     },
     {
       "v": "6",
-      "k": "线上工作流（5 交易 + 1 资讯）"
+      "k": "线上定时器（6 SCF 节点）"
     },
     {
       "v": "6",
@@ -26,8 +26,8 @@
   "gates": [
     {
       "lab": "累计交易日 ≥ 20",
-      "num": "1 / 20",
-      "pct": 5
+      "num": "2 / 20",
+      "pct": 10
     },
     {
       "lab": "覆盖确认态 ≥ 2 种",
@@ -36,8 +36,8 @@
     },
     {
       "lab": "单状态样本 ≥ 5 天",
-      "num": "1 / 5",
-      "pct": 20
+      "num": "2 / 5",
+      "pct": 40
     },
     {
       "lab": "状态切换 ≥ 1 次",
@@ -48,15 +48,15 @@
   "components": [
     {
       "name": "云端交易执行",
-      "desc": "GitHub Actions 5 个工作流每日运行（09:35~15:10）",
-      "meta": "moni-morning_open / morning_add / afternoon_rebalance / afternoon_close / review",
+      "desc": "腾讯云 SCF 函数 6 个北京时间定时器每日运行（09:05~15:10）",
+      "meta": "scf_handler.py · 6 定时器(news/morning_open/morning_add/afternoon_rebalance/afternoon_close/review)",
       "status": "运行中",
       "cls": "green"
     },
     {
       "name": "资讯要闻推送",
-      "desc": "每日 09:05 抓取今日要闻，DeepSeek flash 精炼+合并，飞书卡片",
-      "meta": "moni-news.yml · news.py · DEEPSEEK_APIKEY",
+      "desc": "每日 09:05（SCF news 定时器）抓取今日要闻，DeepSeek flash 精炼+合并，飞书卡片",
+      "meta": "scf_handler news slot · news.py · DEEPSEEK_APIKEY",
       "status": "运行中",
       "cls": "green"
     },
@@ -121,6 +121,11 @@
       "future": false
     },
     {
+      "date": "2026-07-21",
+      "body": "全量切换至腾讯云 SCF 主执行（6 定时器），GitHub Actions 降级为手动灾备；moni-trade 仓库收敛为唯一代码真相源",
+      "future": false
+    },
+    {
       "date": "待定（≥20 交易日）",
       "body": "评估进入阶段三：先做离线绩效归因，确认信号稳定后灰度半自动改库",
       "future": true
@@ -133,28 +138,28 @@
     "考虑为审阅产出建立 reviews/{日期}.md 归档，形成可检索的优化决策日志"
   ],
   "archCurrent": {
-    "h": "当前部署：GitHub Actions（¥0）",
-    "p": "6 个工作流每日运行；状态文件 market_state.json 由工作流末尾 git commit 回仓库持久化；Secrets：MX_APIKEY / MX_SEARCH_APIKEY / DEEPSEEK_APIKEY / NOTIFY_WEBHOOK"
+    "h": "当前部署：腾讯云 SCF（ap-shanghai，唯一主执行器）",
+    "p": "6 个北京时间定时器触发；函数 zipball 克隆仓库到 /tmp 自跑，跑完用 GitHub Contents API 回传报告/状态；Secrets（MX_APIKEY / MX_SEARCH_APIKEY / DEEPSEEK_APIKEY）均为仓库 Secrets（libsodium 加密，未落盘）"
   },
   "archBackup": {
-    "h": "备选备忘：腾讯云函数 SCF（免费档）",
-    "p": "配置保留在 serverless.yml + scf_handler.py（README 含完整步骤）。仅当 GitHub Actions 因网络管制执行不稳时切换；线上稳定后再清理"
+    "h": "灾备备忘：GitHub Actions（手动，无原生 schedule）",
+    "p": "GitHub Actions 仅保留 workflow_dispatch 手动触发作为灾备（cron-job.org 任务已全删，避免与 SCF 双跑重复下单）；SCF 为唯一主执行器"
   },
   "latest": {
-    "date": "2026-07-20",
+    "date": "2026-07-21",
     "confirmed": "震荡市+充裕+冰点",
-    "daily": "震荡市+充裕+冰点",
+    "daily": "震荡市+充裕+正常",
     "position": "50%",
     "activated": "价值成长、稳健估值、筹码集中、机构买入",
-    "selection": "组合共振(≥2票) → 12 只达标，取前 5",
+    "selection": "组合共振(≥2票) → 15 只达标，取前 5",
     "pnl": "—",
     "advice": [
-      "> 模式：**建议模式**（阶段三数据门槛未达，本文件不改库、不 push；仅供用户确认后再执行）",
-      "> 生成时间：2026-07-20 21:00（每日定时复盘）",
-      "| 门槛项 | 要求 | 当前 | 是否满足 |",
-      "|---|---|---|---|",
-      "| 交易日报告文件夹数 | ≥ 20 | 1 | ❌ |",
-      "| distinct confirmed_key | ≥ 2 | 1 | ❌ |"
+      "> 基于当日报告审阅与策略库去重核对后生成。",
+      "> **去重结论**：2026-07-20 建议的 `shake_abundant_ice` 映射与 `sentiment_ice_penalty` modifier 均已落地，本次不再重复建议。",
+      "| 维度 | 日度 (2026-07-21) | 周确认态 |",
+      "|------|-------------------|----------|",
+      "| 趋势 | 震荡市 | 震荡市 |",
+      "| 流动性 | 充裕 (27190亿) | 充裕 |"
     ]
   }
 }
