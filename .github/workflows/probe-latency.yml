@@ -1,0 +1,80 @@
+name: probe-mkapi2-latency
+
+# 用途：在 GitHub 海外 runner(ubuntu-latest, Azure 美/欧) 上实测访问国内东财 mkapi2 API 的
+# 延迟与超时率，用于核验「海外 GitHub Actions 跨洋访问国内 API 是否 ReadTimeout」这一架构论断。
+# 与交易业务仓库(moni-trade)完全隔离：本 workflow 仅存在于看板仓库，只写 latency.json 到本仓库。
+
+on:
+  workflow_dispatch:   # 仅手动触发：在 Actions 页点 Run workflow 即测一次（无自动定时器）
+  # 如需每日自动刷新看板数据，取消下面 3 行注释即可（每日 UTC 02:00）：
+  # schedule:
+  #   - cron: "0 2 * * *"
+
+permissions:
+  contents: write   # 用于把 latency.json 写回本仓库（触发 Pages 重建）
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest   # GitHub 海外 runner —— 真实复现 GitHub Actions 访问国内 API 的场景
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Probe 东财 mkapi2 (国内 API) from overseas runner
+        run: |
+          python3 - <<'PY'
+          import time, json, datetime
+          from urllib.request import Request, urlopen, build_opener
+          from urllib.error import URLError, HTTPError
+
+          # 业务真实端点（复刻 moni-trade 的 mx_data_query / news.py / mx-xuangu）
+          ENDS = [
+            ("claw/query (行情/基本面)", "https://mkapi2.dfcfs.com/finskillshub/api/claw/query",
+             {"Content-Type": "application/json", "apikey": ""},
+             json.dumps({"toolQuery": "贵州茅台的60日均线"}).encode("utf-8")),
+            ("claw/news-search (资讯)", "https://mkapi2.dfcfs.com/finskillshub/api/claw/news-search",
+             {"Content-Type": "application/json", "apikey": ""},
+             json.dumps({"query": "今日A股要闻", "topN": 3}).encode("utf-8")),
+            ("claw/stock-screen (选股)", "https://mkapi2.dfcfs.com/finskillshub/api/claw/stock-screen",
+             {"Content-Type": "application/json", "apikey": ""},
+             json.dumps({"query": "低估值高分红"}).encode("utf-8")),
+          ]
+          N, T = 10, 30  # 与业务 mx_data_query(timeout=30) 对齐；每端点 10 次
+          out = {
+            "generated_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "runner": "ubuntu-latest (GitHub 海外 runner, Azure 美/欧)",
+            "sample": False,
+            "note": "本结果由 GitHub Actions 海外 runner 实测，用于核验『海外跨洋访问国内东财 mkapi2 是否 ReadTimeout』",
+            "endpoints": [],
+          }
+          for name, url, hdr, data in ENDS:
+              lat, ok = [], 0
+              for _ in range(N):
+                  t0 = time.time()
+                  try:
+                      r = build_opener().open(Request(url, data=data, headers=hdr, method="POST"), timeout=T)
+                      r.read()
+                      lat.append(round((time.time() - t0) * 1000)); ok += 1
+                  except HTTPError:
+                      lat.append(round((time.time() - t0) * 1000)); ok += 1
+                  except Exception as e:
+                      s = str(e).lower()
+                      lat.append(T * 1000 if ("timed out" in s or "timeout" in s) else round((time.time() - t0) * 1000))
+              out["endpoints"].append({
+                  "name": name, "ok": ok, "n": N,
+                  "min_ms": min(lat), "avg_ms": round(sum(lat) / len(lat)), "max_ms": max(lat),
+              })
+          json.dump(out, open("latency.json", "w"), ensure_ascii=False, indent=2)
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Commit & push latency.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add latency.json
+          if git diff --cached --quiet; then echo "无变化，跳过提交"; else git commit -m "chore: update mkapi2 latency probe"; git push; fi

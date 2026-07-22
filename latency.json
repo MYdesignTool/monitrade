@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-07-22T00:00:00Z",
+  "runner": "（示例）Clash 近岸代理模拟，非 Azure 裸跨洋",
+  "sample": true,
+  "note": "本文件为示例占位数据，来自本机经 Clash 近岸代理的实测，非 GitHub Actions 海外 runner 真实结果。请到看板仓库 Actions 页运行 probe-mkapi2-latency 以写入真实数据。",
+  "endpoints": [
+    { "name": "claw/query (行情/基本面)", "ok": 5, "n": 5, "min_ms": 1205, "avg_ms": 4401, "max_ms": 9917 },
+    { "name": "claw/news-search (资讯)", "ok": 5, "n": 5, "min_ms": 1177, "avg_ms": 3833, "max_ms": 10864 },
+    { "name": "claw/stock-screen (选股)", "ok": 5, "n": 5, "min_ms": 3319, "avg_ms": 6089, "max_ms": 11643 }
+  ]
+}
