@@ -26,6 +26,8 @@
   .pill.gray{background:var(--gray-bg);color:var(--gray)}
   .pill.blue{background:var(--blue-bg);color:var(--accent)}
   .pill.red{background:var(--red-bg);color:var(--red)}
+  a.pill{text-decoration:none;cursor:pointer;transition:filter .15s}
+  a.pill:hover{filter:brightness(.95)}
   section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-top:18px}
   h2{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
   h2 .tag{font-size:11px;font-weight:500;color:var(--sub)}
@@ -99,7 +101,11 @@
     <div>
       <h1 id="h-title">妙想模拟交易自动化</h1>
       <div class="sub" id="h-sub"></div>
-      <div style="margin-top:8px"><span class="pill" id="h-overall"></span></div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="pill" id="h-overall"></span>
+        <a class="pill blue" href="probe.html" id="probe-link">API 延迟探针 →</a>
+        <span class="sub" id="probe-status"></span>
+      </div>
     </div>
     <div class="updated">
       更新于：<b id="h-updated">加载中…</b><br>
@@ -225,6 +231,29 @@
     $('arch-b-h').textContent = (D.archBackup||{}).h || '';
     $('arch-b-p').textContent = (D.archBackup||{}).p || '';
   }
+
+  // 探针入口：展示上次检测时间与综合延迟（不阻塞主看板）
+  (function(){
+    const el = document.getElementById('probe-status');
+    if(!el) return;
+    fetch('./latency.json', {cache:'no-store'})
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if(!d || !d.generated_at) return;
+        const t = new Date((d.generated_at||'').replace(' ','T') + (d.generated_at && !d.generated_at.endsWith('Z') ? 'Z' : '')).getTime();
+        if(isNaN(t)) return;
+        const diff = Date.now()-t, min = Math.floor(diff/60000);
+        const rel = min<1 ? '刚刚' : min<60 ? min+' 分钟前' : min<1440 ? Math.floor(min/60)+' 小时前' : Math.floor(min/1440)+' 天前';
+        let txt = '上次检测 '+rel;
+        if(d.endpoints && d.endpoints.length){
+          const avg = Math.round(d.endpoints.reduce((a,e)=>a+e.avg_ms,0)/d.endpoints.length);
+          const ok = d.endpoints.reduce((a,e)=>a+e.ok,0), n = d.endpoints.reduce((a,e)=>a+e.n,0);
+          txt += ' · 综合 '+avg+'ms · '+ok+'/'+n;
+        }
+        el.textContent = txt;
+      })
+      .catch(()=>{});
+  })();
 
   fetch('./data.json', {cache:'no-store'})
     .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
