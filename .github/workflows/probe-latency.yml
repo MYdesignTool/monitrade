@@ -5,10 +5,9 @@ name: probe-mkapi2-latency
 # 与交易业务仓库(moni-trade)完全隔离：本 workflow 仅存在于看板仓库，只写 latency.json 到本仓库。
 
 on:
-  workflow_dispatch:   # 仅手动触发：在 Actions 页点 Run workflow 即测一次（无自动定时器）
-  # 如需每日自动刷新看板数据，取消下面 3 行注释即可（每日 UTC 02:00）：
-  # schedule:
-  #   - cron: "0 2 * * *"
+  workflow_dispatch:   # 手动触发：在 Actions 页点 Run workflow 即测一次
+  schedule:
+    - cron: "*/30 * * * *"   # 每 30 分钟一次（全天 48 次）；每次覆盖 latency.json，网页仅显示最新结果
 
 permissions:
   contents: write   # 用于把 latency.json 写回本仓库（触发 Pages 重建）
@@ -48,7 +47,7 @@ jobs:
             "generated_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
             "runner": "ubuntu-latest (GitHub 海外 runner, Azure 美/欧)",
             "sample": False,
-            "note": "本结果由 GitHub Actions 海外 runner 实测，用于核验『海外跨洋访问国内东财 mkapi2 是否 ReadTimeout』",
+            "note": "本结果由 GitHub Actions 海外 runner 实测（连通性探针：不带 apikey、不获取实际行情数据，仅测往返延迟与超时率），用于核验『海外跨洋访问国内东财 mkapi2 是否 ReadTimeout』",
             "endpoints": [],
           }
           for name, url, hdr, data in ENDS:
