@@ -91,19 +91,37 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # 先拉最新历史，避免基于陈旧 base 提交导致后续 rebase 把远端已追加的行丢掉
-          git pull --rebase origin main 2>/dev/null || true
-          git add latency.json latency-history.jsonl
-          if git diff --cached --quiet; then echo "无变化，跳过提交"; exit 0; fi
-          git commit -m "chore: probe mkapi2 latency + history"
+          # 暂存本轮产物（Python 步骤已写入 latency.json 快照 与 latency-history.jsonl 的本轮 1 行）
+          cp latency.json /tmp/our_latency.json
+          cp latency-history.jsonl /tmp/our_history.jsonl
           for i in 1 2 3 4 5 6; do
-            git pull --rebase origin main 2>/dev/null
-            if git push 2>/dev/null; then echo "pushed on attempt $i"; exit 0; fi
-            # 罕见并发冲突：history 用 --union 保留双方追加的行，latency.json 用 --theirs 取最新快照
-            git checkout --union latency-history.jsonl 2>/dev/null || true
-            git checkout --theirs latency.json 2>/dev/null || true
-            git add -A
-            git rebase --continue 2>/dev/null && git push 2>/dev/null && { echo "pushed after conflict-resolve ($i)"; exit 0; }
+            # 每次都基于远端最新 main 重建，彻底规避 rebase 冲突（注：git checkout --union 在该 git 版本不存在）
+            git fetch origin main 2>/dev/null || git fetch origin 2>/dev/null || true
+            git reset --hard origin/main 2>/dev/null || git reset --hard HEAD
+            # latency.json 用本轮快照覆盖（永远是最新一次实测）
+            cp /tmp/our_latency.json latency.json
+            # 历史：远端最新 + 本轮行，按 generated_at 去重 —— 既不丢行也不重复
+            python3 - <<'PY'
+          import json
+          def load(p):
+              try: return [json.loads(l) for l in open(p, encoding='utf-8') if l.strip()]
+              except Exception: return []
+          rem = load('latency-history.jsonl')
+          ours = load('/tmp/our_history.jsonl')
+          seen = {r.get('generated_at') for r in rem if isinstance(r, dict)}
+          merged = list(rem)
+          for r in ours:
+              if isinstance(r, dict) and r.get('generated_at') not in seen:
+                  merged.append(r); seen.add(r.get('generated_at'))
+          with open('latency-history.jsonl', 'w', encoding='utf-8') as f:
+              for r in merged:
+                  f.write(json.dumps(r, ensure_ascii=False) + '\n')
+          PY
+            git add latency.json latency-history.jsonl
+            if git diff --cached --quiet; then echo "无变化，跳过提交"; continue; fi
+            git commit -m "chore: probe mkapi2 latency + history" 2>/dev/null
+            if git push origin main 2>/dev/null; then echo "pushed on attempt $i"; exit 0; fi
+            echo "push 失败，下一轮重试 ($i)"
             sleep 4
           done
           echo "push 持续失败（罕见并发），本次历史点可能丢失，下一轮自动补齐"
