@@ -1,9 +1,0 @@
-name: sched-probe-test
-"on":
-  schedule:
-    - cron: "*/30 * * * *"
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "scheduled ping at $(date -u)"

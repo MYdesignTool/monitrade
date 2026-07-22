@@ -5,9 +5,9 @@ name: probe-mkapi2-latency
 # 与交易业务仓库(moni-trade)完全隔离：本 workflow 仅存在于看板仓库，只写 latency.json 到本仓库。
 
 "on":
-  workflow_dispatch:   # 手动触发：在 Actions 页点 Run workflow 即测一次
-  schedule:
-    - cron: "*/30 * * * *"   # 每 30 分钟一次（全天 48 次）
+  # 由外部定时器(cron-job.org)每 30 分钟经 workflow_dispatch API 触发。
+  # 不用 GitHub 原生 schedule：本仓库实测原生 schedule 延迟数小时（见 moni-trade trigger/README，实测晚~3.5h）。
+  workflow_dispatch:
 
 permissions:
   contents: write   # 用于把 latency.json 写回本仓库（触发 Pages 重建）
