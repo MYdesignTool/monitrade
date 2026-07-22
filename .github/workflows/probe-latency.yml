@@ -4,7 +4,7 @@ name: probe-mkapi2-latency
 # 延迟与超时率，用于核验「海外 GitHub Actions 跨洋访问国内 API 是否 ReadTimeout」这一架构论断。
 # 与交易业务仓库(moni-trade)完全隔离：本 workflow 仅存在于看板仓库，只写 latency.json 到本仓库。
 
-on:
+"on":
   workflow_dispatch:   # 手动触发：在 Actions 页点 Run workflow 即测一次
   schedule:
     - cron: "*/30 * * * *"   # 每 30 分钟一次（全天 48 次）
