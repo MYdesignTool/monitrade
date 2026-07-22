@@ -33,6 +33,20 @@
   .statusbar .tag.warn { background:rgba(210,153,34,.15); color:#d29922; }
   .statusbar .tag.bad { background:rgba(248,81,73,.15); color:var(--bad); }
   .statusbar .sub2 { color:var(--mut); font-size:12px; margin-top:4px; }
+  /* ③ 趋势卡片 */
+  .summary { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .scard { flex:1; min-width:150px; background:#0d1117; border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .scard .lbl { font-size:12px; color:var(--mut); }
+  .scard .val { font-size:22px; font-weight:700; margin-top:2px; }
+  .scard .sub2 { font-size:11px; color:var(--mut); margin-top:2px; }
+  .ranges { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .ranges button { background:#0d1117; color:var(--fg); border:1px solid var(--line); padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .ranges button.active { background:var(--acc); color:#04101f; border-color:var(--acc); font-weight:600; }
+  .chartwrap { width:100%; overflow-x:auto; }
+  .chartwrap svg { width:100%; height:auto; display:block; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin:12px 0 4px; }
+  .legend label { display:flex; align-items:center; gap:5px; cursor:pointer; color:var(--mut); }
+  .legend .sw { width:12px; height:12px; border-radius:3px; display:inline-block; }
 </style>
 </head>
 <body>
@@ -72,6 +86,34 @@
   </div>
 
   <div class="card">
+    <h2>③ 长期稳定性趋势（历史累积）</h2>
+    <p>每次自动运行都会把结果<b>追加</b>到 <code>latency-history.jsonl</code>（不覆盖，一个月约 1440 条）。下面展示综合平均延迟（三端点均值）的走势，以及按<b>北京时间</b>统计的「今日 / 三日内 / 7天内」平均。目标：连续观察一段时间（建议一个月）判断海外 runner 访问国内 API 的稳定性。</p>
+    <div class="summary" id="summary">
+      <div class="scard"><div class="lbl">今日平均延迟</div><div class="val" id="cToday">—</div><div class="sub2" id="cTodaySub"></div></div>
+      <div class="scard"><div class="lbl">三日内平均</div><div class="val" id="c3">—</div><div class="sub2" id="c3Sub"></div></div>
+      <div class="scard"><div class="lbl">7天内平均</div><div class="val" id="c7">—</div><div class="sub2" id="c7Sub"></div></div>
+    </div>
+    <div class="ranges" id="ranges">
+      <button data-r="0" class="active">全部</button>
+      <button data-r="7">近7天</button>
+      <button data-r="14">近14天</button>
+      <button data-r="30">近30天</button>
+    </div>
+    <div class="chartwrap"><div id="chart"></div></div>
+    <div class="legend" id="legend">
+      <label><input type="checkbox" id="ckOverall" checked><span class="sw" style="background:#58a6ff"></span>综合平均</label>
+      <label><input type="checkbox" id="ck0" checked><span class="sw" style="background:#3fb950"></span>行情/基本面</label>
+      <label><input type="checkbox" id="ck1" checked><span class="sw" style="background:#d29922"></span>资讯</label>
+      <label><input type="checkbox" id="ck2" checked><span class="sw" style="background:#bc8cff"></span>选股</label>
+    </div>
+    <table id="epTbl" style="margin-top:8px;">
+      <thead><tr><th>端点</th><th>今日平均</th><th>三日内平均</th><th>7天内平均</th></tr></thead>
+      <tbody><tr><td colspan="4" style="color:var(--mut)">加载中…</td></tr></tbody>
+    </table>
+    <div class="meta" id="histMeta"></div>
+  </div>
+
+  <div class="card">
     <h2>判读要点</h2>
     <p>
       <span class="pill">拿到任意 HTTP 响应</span> = 网络连通、未超时（即使 401/403）。<br>
@@ -89,8 +131,18 @@ const ENDPOINTS = [
   ["claw/stock-screen (选股)", "https://mkapi2.dfcfs.com/finskillshub/api/claw/stock-screen", JSON.stringify({query:"低估值高分红"})],
 ];
 const N = 5, TIMEOUT_MS = 30000;
+const OVERALL_COLOR = "#58a6ff";
+const EP_META = {
+  "claw/query (行情/基本面)":   { color:"#3fb950", short:"行情/基本面" },
+  "claw/news-search (资讯)":    { color:"#d29922", short:"资讯" },
+  "claw/stock-screen (选股)":   { color:"#bc8cff", short:"选股" },
+};
+const EP_NAMES = Object.keys(EP_META);
+window.__chart = { overall:true, ends:{ [EP_NAMES[0]]:true, [EP_NAMES[1]]:true, [EP_NAMES[2]]:true }, range:0 };
+window.__recs = [];
 
 function fmt(ms){ return ms==null ? "—" : Math.round(ms)+"ms"; }
+function dayIdx(d){ return Math.floor((d.getTime() + 8*3600*1000) / 86400000); } // 北京时间所在「天」序号
 
 // ① 展示 Action 写入的 latency.json
 async function loadServer(){
@@ -187,9 +239,157 @@ document.getElementById("btn").addEventListener("click", async (ev)=>{
   ev.target.disabled = false; ev.target.textContent = "用本浏览器重测（3 端点 × 5 次）";
 });
 
+// ③ 历史趋势
+async function loadHistory(){
+  try {
+    const r = await fetch("latency-history.jsonl?t=" + Date.now());
+    if(!r.ok) throw 0;
+    const text = await r.text();
+    const recs = text.split("\n").map(s=>s.trim()).filter(Boolean).map(s=>{
+      try { return JSON.parse(s); } catch(e){ return null; }
+    }).filter(Boolean);
+    if(!recs.length){ renderNoHistory(); return; }
+    recs.forEach(rec=>{
+      const t = new Date((rec.generated_at||"").replace(" ","T") + (rec.generated_at && !rec.generated_at.endsWith("Z") ? "Z" : "")).getTime();
+      rec._t = isNaN(t) ? 0 : t;
+      rec._bjIdx = Math.floor((t + 8*3600*1000) / 86400000);
+    });
+    recs.sort((a,b)=>a._t - b._t);
+    window.__recs = recs;
+    computeSummary(recs);
+    drawAll();
+  } catch(e){
+    renderNoHistory();
+  }
+}
+
+function computeSummary(recs){
+  const todayIdx = dayIdx(new Date());
+  const windows = {
+    today: recs.filter(r=>r._bjIdx === todayIdx),
+    d3:    recs.filter(r=>r._bjIdx >= todayIdx - 2),
+    d7:    recs.filter(r=>r._bjIdx >= todayIdx - 6),
+  };
+  const avgMs = arr => arr.length ? Math.round(arr.reduce((a,r)=>a + (r.overall_avg_ms||0), 0) / arr.length) : null;
+  const sr = arr => { let ok=0,n=0; arr.forEach(r=>{ ok += r.ok_total||0; n += r.n_total||0; }); return n ? Math.round(ok/n*100) : null; };
+  setCard("cToday", avgMs(windows.today), sr(windows.today), windows.today.length);
+  setCard("c3",     avgMs(windows.d3),    sr(windows.d3),    windows.d3.length);
+  setCard("c7",     avgMs(windows.d7),    sr(windows.d7),    windows.d7.length);
+  renderEpTable(recs, windows);
+}
+
+function setCard(id, ms, sr, n){
+  document.getElementById(id).textContent = ms==null ? "—" : ms + "ms";
+  document.getElementById(id+"Sub").textContent =
+    (sr==null ? "成功率 —" : ("成功率 " + sr + "%")) + " ｜ " + (n||0) + " 次运行";
+}
+
+function renderEpTable(recs, windows){
+  const epAvg = (arr, name) => {
+    const ys = arr.map(r => (r.endpoints && r.endpoints[name]) ? r.endpoints[name].avg_ms : null).filter(x=>x!=null);
+    return ys.length ? Math.round(ys.reduce((a,b)=>a+b,0)/ys.length) : null;
+  };
+  const tb = document.querySelector("#epTbl tbody");
+  tb.innerHTML = "";
+  EP_NAMES.forEach(nm=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${EP_META[nm].short} <span style="color:var(--mut);font-size:11px">(${nm.split(" ")[0]})</span></td>
+      <td>${epAvg(windows.today,nm)==null?"—":epAvg(windows.today,nm)+"ms"}</td>
+      <td>${epAvg(windows.d3,nm)==null?"—":epAvg(windows.d3,nm)+"ms"}</td>
+      <td>${epAvg(windows.d7,nm)==null?"—":epAvg(windows.d7,nm)+"ms"}</td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById("histMeta").textContent =
+    `历史样本：${recs.length} 次运行（北京时间）｜ 最早 ${new Date(recs[0]._t).toLocaleString("zh-CN",{hour12:false})} ｜ 最新 ${new Date(recs[recs.length-1]._t).toLocaleString("zh-CN",{hour12:false})}`;
+}
+
+function renderNoHistory(){
+  ["cToday","c3","c7"].forEach(id=>{ document.getElementById(id).textContent="—"; document.getElementById(id+"Sub").textContent="暂无历史数据"; });
+  document.getElementById("chart").innerHTML = '<div style="color:var(--mut);padding:30px 0;text-align:center;font-size:13px">暂无历史数据。自动运行若干次后，这里会出现延迟趋势折线图。</div>';
+  document.querySelector("#epTbl tbody").innerHTML = '<tr><td colspan="4" style="color:var(--mut)">暂无历史数据</td></tr>';
+}
+
+function drawChart(recs){
+  const W=900,H=320,padL=52,padR=14,padT=16,padB=30;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  if(!recs.length) return '<div style="color:var(--mut);padding:30px 0;text-align:center;font-size:13px">该时间范围内暂无数据</div>';
+  const st = window.__chart;
+  let maxY = 0;
+  const series = [];
+  if(st.overall){
+    const ys = recs.map(r=>r.overall_avg_ms);
+    maxY = Math.max(maxY, ...ys);
+    series.push({ color:OVERALL_COLOR, name:"综合平均", pts: recs.map(r=>({x:r._t, y:r.overall_avg_ms})) });
+  }
+  for(const name of EP_NAMES){
+    if(st.ends[name] && recs[0].endpoints && recs[0].endpoints[name]){
+      const ys = recs.map(r => (r.endpoints[name] ? r.endpoints[name].avg_ms : 0));
+      maxY = Math.max(maxY, ...ys);
+      series.push({ color:EP_META[name].color, name:EP_META[name].short, pts: recs.map(r=>({x:r._t, y: r.endpoints[name] ? r.endpoints[name].avg_ms : 0})) });
+    }
+  }
+  if(maxY <= 0) maxY = 1000;
+  maxY = Math.ceil(maxY/200)*200;
+  const tMin = recs[0]._t, tMax = recs[recs.length-1]._t;
+  const xOf = t => padL + (tMax===tMin ? plotW/2 : (t - tMin)/(tMax - tMin) * plotW);
+  const yOf = v => padT + plotH - (v/maxY) * plotH;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">`;
+  // 横向网格 + Y 轴标签
+  const gy = 5;
+  for(let i=0;i<=gy;i++){
+    const v = maxY * i / gy, y = yOf(v);
+    svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#30363d" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${(y+4).toFixed(1)}" fill="#8b98a9" font-size="11" text-anchor="end">${Math.round(v)}</text>`;
+  }
+  svg += `<text x="${padL-8}" y="${(padT-2).toFixed(1)}" fill="#8b98a9" font-size="11" text-anchor="end">ms</text>`;
+  // X 轴刻度（日期）
+  const ticks = 6;
+  for(let i=0;i<=ticks;i++){
+    const t = tMin + (tMax - tMin) * i / ticks;
+    const x = xOf(t);
+    const dt = new Date(t);
+    const lbl = `${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    svg += `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT+plotH}" stroke="#21262d" stroke-width="1"/>`;
+    svg += `<text x="${x.toFixed(1)}" y="${H-10}" fill="#8b98a9" font-size="11" text-anchor="middle">${lbl}</text>`;
+  }
+  // 折线
+  series.forEach(s=>{
+    const pts = s.pts.map(p=>`${xOf(p.x).toFixed(1)},${yOf(p.y).toFixed(1)}`).join(" ");
+    svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="${s.name==='综合平均'?2.2:1.4}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  // 末端圆点
+  series.forEach(s=>{
+    const p = s.pts[s.pts.length-1];
+    if(p) svg += `<circle cx="${xOf(p.x).toFixed(1)}" cy="${yOf(p.y).toFixed(1)}" r="3" fill="${s.color}"/>`;
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+function drawAll(){
+  const recs = window.__recs || [];
+  const todayIdx = dayIdx(new Date());
+  const rd = window.__chart.range;
+  const filtered = rd > 0 ? recs.filter(r=>r._bjIdx >= todayIdx - (rd - 1)) : recs;
+  document.getElementById("chart").innerHTML = drawChart(filtered);
+}
+
+// ③ 控件交互
+document.getElementById("ckOverall").addEventListener("change", e=>{ window.__chart.overall = e.target.checked; drawAll(); });
+document.getElementById("ck0").addEventListener("change", e=>{ window.__chart.ends[EP_NAMES[0]] = e.target.checked; drawAll(); });
+document.getElementById("ck1").addEventListener("change", e=>{ window.__chart.ends[EP_NAMES[1]] = e.target.checked; drawAll(); });
+document.getElementById("ck2").addEventListener("change", e=>{ window.__chart.ends[EP_NAMES[2]] = e.target.checked; drawAll(); });
+document.querySelectorAll("#ranges button").forEach(b=>b.addEventListener("click", ()=>{
+  document.querySelectorAll("#ranges button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  window.__chart.range = parseInt(b.dataset.r, 10);
+  drawAll();
+}));
+
 function showBanner(t){ const b=document.getElementById("banner"); b.textContent=t; b.style.display="block"; }
 
 loadServer();
+loadHistory();
 </script>
 </body>
 </html>
