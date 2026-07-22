@@ -390,6 +390,9 @@ function showBanner(t){ const b=document.getElementById("banner"); b.textContent
 
 loadServer();
 loadHistory();
+
+// 自动刷新：每 60 秒重拉 latency.json / history，避免长开标签页显示陈旧“上次检测时间”造成误判
+setInterval(() => { try { loadServer(); loadHistory(); } catch(e){} }, 60 * 1000);
 </script>
 </body>
 </html>

@@ -233,7 +233,7 @@
   }
 
   // 探针入口：展示上次检测时间与综合延迟（不阻塞主看板）
-  (function(){
+  function refreshProbeStatus(){
     const el = document.getElementById('probe-status');
     if(!el) return;
     fetch('./latency.json', {cache:'no-store'})
@@ -253,7 +253,9 @@
         el.textContent = txt;
       })
       .catch(()=>{});
-  })();
+  }
+  refreshProbeStatus();
+  setInterval(refreshProbeStatus, 60 * 1000); // 每分钟刷新，避免长开标签页显示陈旧“上次检测”造成误判
 
   fetch('./data.json', {cache:'no-store'})
     .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })

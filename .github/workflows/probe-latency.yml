@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest   # GitHub 海外 runner —— 真实复现 GitHub Actions 访问国内 API 的场景
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 非浅克隆，rebase 合并历史文件更稳
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -89,17 +91,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 先拉最新历史，避免基于陈旧 base 提交导致后续 rebase 把远端已追加的行丢掉
+          git pull --rebase origin main 2>/dev/null || true
           git add latency.json latency-history.jsonl
           if git diff --cached --quiet; then echo "无变化，跳过提交"; exit 0; fi
           git commit -m "chore: probe mkapi2 latency + history"
-          for i in 1 2 3 4 5; do
-            if git push; then echo "pushed on attempt $i"; exit 0; fi
-            echo "push 失败，尝试 rebase 后重试 ($i)"
-            git pull --rebase origin main || {
-              git checkout --theirs latency.json latency-history.jsonl 2>/dev/null || true
-              git add -A
-              git rebase --continue 2>/dev/null || true
-            }
+          for i in 1 2 3 4 5 6; do
+            git pull --rebase origin main 2>/dev/null
+            if git push 2>/dev/null; then echo "pushed on attempt $i"; exit 0; fi
+            # 罕见并发冲突：history 用 --union 保留双方追加的行，latency.json 用 --theirs 取最新快照
+            git checkout --union latency-history.jsonl 2>/dev/null || true
+            git checkout --theirs latency.json 2>/dev/null || true
+            git add -A
+            git rebase --continue 2>/dev/null && git push 2>/dev/null && { echo "pushed after conflict-resolve ($i)"; exit 0; }
             sleep 4
           done
           echo "push 持续失败（罕见并发），本次历史点可能丢失，下一轮自动补齐"
