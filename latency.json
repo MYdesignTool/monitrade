@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-23T10:30:32Z",
+  "generated_at": "2026-07-23T11:00:43Z",
   "runner": "ubuntu-latest (GitHub 海外 runner, Azure 美/欧)",
   "sample": false,
   "note": "本结果由 GitHub Actions 海外 runner 实测（连通性探针：不带 apikey、不获取实际行情数据，仅测往返延迟与超时率），用于核验『海外跨洋访问国内东财 mkapi2 是否 ReadTimeout』",
@@ -8,25 +8,25 @@
       "name": "claw/query (行情/基本面)",
       "ok": 10,
       "n": 10,
-      "min_ms": 740,
-      "avg_ms": 1507,
-      "max_ms": 2716
+      "min_ms": 572,
+      "avg_ms": 913,
+      "max_ms": 1667
     },
     {
       "name": "claw/news-search (资讯)",
       "ok": 10,
       "n": 10,
-      "min_ms": 739,
-      "avg_ms": 973,
-      "max_ms": 1944
+      "min_ms": 586,
+      "avg_ms": 870,
+      "max_ms": 2086
     },
     {
       "name": "claw/stock-screen (选股)",
       "ok": 10,
       "n": 10,
-      "min_ms": 740,
-      "avg_ms": 1516,
-      "max_ms": 2928
+      "min_ms": 572,
+      "avg_ms": 1045,
+      "max_ms": 2632
     }
   ]
 }
