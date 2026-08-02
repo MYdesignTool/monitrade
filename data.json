@@ -48,15 +48,15 @@
   "components": [
     {
       "name": "云端交易执行",
-      "desc": "腾讯云 SCF 函数 6 个北京时间定时器每日运行（09:05~15:10）",
-      "meta": "scf_handler.py · 6 定时器(news/morning_open/morning_add/afternoon_rebalance/afternoon_close/review)",
+      "desc": "GitHub Actions 6 个 workflow 由 cron-job.org 定时器按北京时间触发（09:05~15:10）",
+      "meta": "moni-*.yml ×6 · cron-job.org 外部时钟 · ci_run.py",
       "status": "运行中",
       "cls": "green"
     },
     {
       "name": "资讯要闻推送",
-      "desc": "每日 09:05（SCF news 定时器）抓取今日要闻，DeepSeek flash 精炼+合并，飞书卡片",
-      "meta": "scf_handler news slot · news.py · DEEPSEEK_APIKEY",
+      "desc": "每日 09:05（cron-job.org → moni-news workflow）抓取今日要闻，DeepSeek flash 精炼+合并，飞书卡片",
+      "meta": "moni-news.yml · news.py · DEEPSEEK_APIKEY",
       "status": "运行中",
       "cls": "green"
     },
@@ -123,6 +123,11 @@
     {
       "date": "2026-07-21",
       "body": "全量切换至腾讯云 SCF 主执行（6 定时器），GitHub Actions 降级为手动灾备；moni-trade 仓库收敛为唯一代码真相源",
+      "future": false
+    },
+    {
+      "date": "2026-08-02",
+      "body": "切回 GitHub Actions 主执行 + cron-job.org 外部时钟（免 SCF 费用）；SCF 定时器删除降级为手动灾备；修复非交易日旧报告推送与下单防重复",
       "future": false
     },
     {
