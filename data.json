@@ -1,7 +1,7 @@
 {
   "project": "妙想模拟交易自动化（moni-trade）",
-  "subtitle": "腾讯云 SCF 云端模拟盘自动交易 + 资讯推送 + 策略自优化",
-  "updated": "2026-07-31",
+  "subtitle": "GitHub Actions 云端模拟盘自动交易 + 资讯推送 + 策略自优化",
+  "updated": "2026-08-02",
   "overall": "阶段二 · 人工审阅进行中",
   "overallClass": "yellow",
   "repo": "github.com/MYdesignTool/moni-trade（私有）",
@@ -138,12 +138,12 @@
     "考虑为审阅产出建立 reviews/{日期}.md 归档，形成可检索的优化决策日志"
   ],
   "archCurrent": {
-    "h": "当前部署：腾讯云 SCF（ap-shanghai，唯一主执行器）",
-    "p": "6 个北京时间定时器触发；函数 zipball 克隆仓库到 /tmp 自跑，跑完用 GitHub Contents API 回传报告/状态；Secrets（MX_APIKEY / MX_SEARCH_APIKEY / DEEPSEEK_APIKEY）均为仓库 Secrets（libsodium 加密，未落盘）"
+    "h": "当前部署：GitHub Actions + cron-job.org 外部时钟（主执行）",
+    "p": "6 个 workflow 由 cron-job.org 定时器按北京时间 POST dispatches API 触发（避开原生 schedule 数小时延迟）；runner checkout 最新 main 直接执行，persist 用 git push 回传报告/状态；私有仓库免费 2,000 分钟/月覆盖用量"
   },
   "archBackup": {
-    "h": "灾备备忘：GitHub Actions（手动，无原生 schedule）",
-    "p": "GitHub Actions 仅保留 workflow_dispatch 手动触发作为灾备（cron-job.org 任务已全删，避免与 SCF 双跑重复下单）；SCF 为唯一主执行器"
+    "h": "灾备备忘：腾讯云 SCF（手动 invoke，定时器已删）",
+    "p": "SCF 函数保留（ap-shanghai），6 个定时器 2026-08-02 已删除防双跑；GitHub Actions 故障时控制台手动 invoke 对应 slot 兜底，代码与 Actions 同一份 main"
   },
   "latest": {
     "date": "2026-07-31",
@@ -154,12 +154,7 @@
     "selection": "组合共振(≥2票) → 13 只达标，13 只进入质量门筛选（上限15）",
     "pnl": "-0.47%",
     "advice": [
-      "> 生成方式：定时任务 `每日策略复盘与优化建议` 自动产出。",
-      "> 模式判定：**建议模式**（阶段三数据门槛未达，仅出建议，不改库）。",
-      "> 数据来源：`market_state.json`、`reports/2026-07-31/*.md`、`策略库.json`（已 git pull 最新）。",
-      "**本日模式**：建议模式。阶段三数据门槛中「reports 交易日文件夹数 ≥ 20」未满足（当前仅 10 个），其余三项已满足。",
-      "**经去重核对，本日无新增 `策略库.json` 修改建议**：历史三条建议（S1 分批=2、S2 买入观察期=1、S3 情绪轴保守优先）均已落地，当前值与建议值一致，不再重复建议。",
-      "**核心未解问题**：目标仓位中枢 54% vs 实际总仓位 15.65%，缺口约 38pp。该缺口属**执行引擎侧**问题（回执失真 T1、尾盘不新开仓、候选轮换、entered 断链 T3），**不在 `策略库.json` 可改范围**，需引擎修复，见第四节。"
+      "（暂无 AI 优化建议.md：建议模式下仅出建议不改库，或当日无新报告）"
     ]
   }
 }
