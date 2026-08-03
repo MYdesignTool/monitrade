@@ -1,7 +1,7 @@
 {
   "project": "妙想模拟交易自动化（moni-trade）",
   "subtitle": "GitHub Actions 云端模拟盘自动交易 + 资讯推送 + 策略自优化",
-  "updated": "2026-08-03",
+  "updated": "2026-08-04",
   "overall": "阶段二 · 人工审阅进行中",
   "overallClass": "yellow",
   "repo": "github.com/MYdesignTool/moni-trade（私有）",
